@@ -236,7 +236,7 @@ class MesonApp:
 
             h_list.sort()
             h_buld.sort()
-            directpath = os.path.join(env.get_build_dir(), ".deps")
+            directpath = os.path.join(env.get_build_dir(), ".src", file_name)
             filename = os.path.join(directpath, file_name + ".h.txt")
             if not os.path.exists(directpath):
                 os.makedirs(directpath)
