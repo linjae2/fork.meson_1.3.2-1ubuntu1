@@ -1062,7 +1062,7 @@ class NinjaBackend(backends.Backend):
         if not os.path.exists(directpath):
             os.makedirs(directpath)
 
-        tmp_sources = compiled_sources.sort()
+        tmp_sources = sorted(compiled_sources)
         with open(filename, 'w', encoding='utf-8') as f:
             # f.write("\n".join(tmp_sources))
             for s in tmp_sources:
@@ -1071,7 +1071,7 @@ class NinjaBackend(backends.Backend):
                 if file is not None:
                     srcpath = os.path.join(self.environment.get_source_dir(), file.subdir, file.fname)
                     if os.path.exists(srcpath):
-                        destfile = os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"), file.subdir, file.fname)
+                        destfile = os.path.abspath(os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"), file.subdir, file.fname))
                         destdir = os.path.dirname(destfile)
                         if not os.path.exists(destdir):
                             os.makedirs(destdir)

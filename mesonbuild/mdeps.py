@@ -246,7 +246,7 @@ class MesonApp:
                     h_txt = os.path.relpath(os.path.join(env.get_build_dir(), h_file))
                     f.write('<ClCompile Include="{}" />\n'.format(h_txt))
                     if os.path.exists(h_txt):
-                        destfile = os.path.join(env.get_build_dir(), file_name, ".src/.h_build", h_file)
+                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".h_build", h_file)
                         destdir = os.path.dirname(destfile)
                         if not os.path.exists(destdir):
                             os.makedirs(destdir)
@@ -256,7 +256,7 @@ class MesonApp:
                     h_txt = os.path.relpath(os.path.join(env.get_source_dir(), h_file))
                     f.write('<ClCompile Include="{}" />\n'.format(h_txt))
                     if os.path.exists(h_txt):
-                        destfile = os.path.join(env.get_build_dir(), file_name, ".src/.h_src", h_file)
+                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".h_src", h_file)
                         destdir = os.path.dirname(destfile)
                         if not os.path.exists(destdir):
                             os.makedirs(destdir)
