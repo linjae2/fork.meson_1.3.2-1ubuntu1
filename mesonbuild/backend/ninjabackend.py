@@ -1055,9 +1055,27 @@ class NinjaBackend(backends.Backend):
         else:
             final_obj_list = obj_list
 
-        filename = os.path.join(self.environment.get_build_dir(), "build." + outname.replace("/", "_") + ".txt")
+        import shutil
+
+        directpath = os.path.join(self.environment.get_build_dir(), ".deps")
+        filename = os.path.join(directpath, "build." + outname.replace("/", "_") + ".c.txt")
+        if not os.path.exists(directpath):
+            os.makedirs(directpath)
+
+        tmp_sources = compiled_sources.sort()
         with open(filename, 'w', encoding='utf-8') as f:
-            f.write("\n".join(compiled_sources))
+            # f.write("\n".join(tmp_sources))
+            for s in tmp_sources:
+                f.write('<ClCompile Include="{}" />\n'.format(s))
+                file = target_sources.get(s)
+                if file is not None:
+                    srcpath = os.path.join(self.environment.get_source_dir(), file.subdir, file.fname)
+                    if os.path.exists(srcpath):
+                        destfile = os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"), file.subdir, file.fname)
+                        destdir = os.path.dirname(destfile)
+                        if not os.path.exists(destdir):
+                            os.makedirs(destdir)
+                        shutil.copy(srcpath, destfile)
 
         elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
         self.generate_dependency_scan_target(target, compiled_sources, source2object, generated_source_files, fortran_order_deps)
@@ -2976,7 +2994,12 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
             raise InvalidArguments(f'Invalid source type: {src!r}')
         obj_basename = self.object_filename_from_source(target, src)
         rel_obj = os.path.join(self.get_target_private_dir(target), obj_basename)
-        dep_file = compiler.depfile_for_object(rel_obj)
+        
+        # dep_file = compiler.depfile_for_object(rel_obj)
+        dep_file = os.path.join(".deps/d", self.get_target_filename(target).replace("/", "_") + ".d")
+        # dep_file = self.get_target_filename(target) + ".d"
+        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
 
         # Add MSVC debug file generation compile flags: /Fd /FS
         commands += self.get_compile_debugfile_args(compiler, target, rel_obj)
