@@ -1058,7 +1058,7 @@ class NinjaBackend(backends.Backend):
         import shutil
 
         directpath = os.path.join(self.environment.get_build_dir(), ".deps")
-        filename = os.path.join(directpath, "build." + outname.replace("/", "_") + ".c.txt")
+        filename = os.path.join(directpath, outname.replace("/", "_") + ".c.txt")
         if not os.path.exists(directpath):
             os.makedirs(directpath)
 
