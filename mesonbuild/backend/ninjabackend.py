@@ -1054,6 +1054,11 @@ class NinjaBackend(backends.Backend):
             final_obj_list = self.generate_prelink(target, obj_list)
         else:
             final_obj_list = obj_list
+
+        filename = os.path.join(self.environment.get_build_dir(), "build." + outname.replace("/", "_") + ".txt")
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write("\n".join(compiled_sources))
+
         elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
         self.generate_dependency_scan_target(target, compiled_sources, source2object, generated_source_files, fortran_order_deps)
         self.add_build(elem)
