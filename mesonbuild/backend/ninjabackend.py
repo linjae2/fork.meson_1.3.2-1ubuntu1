@@ -1057,6 +1057,12 @@ class NinjaBackend(backends.Backend):
 
         import shutil
 
+        dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", self.get_target_filename(target).replace("/", "_") + ".d")
+        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
+        with open(dep_file, 'w', encoding='utf-8') as f:
+            f.write("\n".join(obj_list))
+
         directpath = os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"))
         filename = os.path.join(directpath, outname.replace("/", "_") + ".c.txt")
         if not os.path.exists(directpath):
@@ -3002,11 +3008,11 @@ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47485'''))
         obj_basename = self.object_filename_from_source(target, src)
         rel_obj = os.path.join(self.get_target_private_dir(target), obj_basename)
         
-        # dep_file = compiler.depfile_for_object(rel_obj)
-        dep_file = os.path.join(".deps/d", self.get_target_filename(target).replace("/", "_") + ".d")
-        # dep_file = self.get_target_filename(target) + ".d"
-        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
-            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
+        dep_file = compiler.depfile_for_object(rel_obj)
+        # dep_file = os.path.join(".deps/d", self.get_target_filename(target).replace("/", "_") + ".d")
+        # # dep_file = self.get_target_filename(target) + ".d"
+        # if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+        #     os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
 
         # Add MSVC debug file generation compile flags: /Fd /FS
         commands += self.get_compile_debugfile_args(compiler, target, rel_obj)

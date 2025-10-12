@@ -202,7 +202,7 @@ class MesonApp:
 
         depdir = os.path.join(env.get_build_dir(), ".deps/d")
         file_list = os.listdir(depdir)
-        file_list = [file for file in file_list if file.endswith(".d")]
+        file_list = [file for file in file_list if file.endswith("000.0.d")]
         # print ("file_list: {}".format(file_list))
 
         cur_dir = os.getcwd()
@@ -212,27 +212,39 @@ class MesonApp:
             filedir = os.path.join(env.get_build_dir(), ".src", file_name)
             h_list = []
             h_buld = []
+            d_files = []
             dfilename = os.path.join(depdir, file)
             with open(dfilename, 'r', encoding='utf-8') as f:
                 while True:
                     line = f.readline()
                     if not line: break
 
-                    h_files = line.strip().split(' ') # 줄 끝의 줄 바꿈 문자를 제거한다.
-                    for h_file in h_files:
-                        if h_file == '\\': break
-                        if not h_file.endswith('.h'): break
-                        h_abspath = os.path.abspath(os.path.realpath(h_file))
+                    d_file = os.path.abspath(os.path.join(env.get_build_dir(), line.strip() + ".d"))
+                    if os.path.exists(d_file): d_files.append(d_file)
 
-                        if h_abspath.startswith(env.get_source_dir()):
-                            h_txt = h_abspath[len(env.get_source_dir()) + 1:]
-                            if h_txt not in h_list: h_list.append(h_txt)
-                            # print(h_txt)
+            for d_file in d_files:
+                with open(d_file, 'r', encoding='utf-8') as f:
+                    while True:
+                        line = f.readline()
+                        if not line: break
 
-                        if h_abspath.startswith(env.get_build_dir()):
-                            h_txt = h_abspath[len(env.get_build_dir()) + 1:]
-                            if h_txt not in h_buld: h_buld.append(h_txt)
-                            # print("==>>" + h_txt)
+                        h_files = line.strip().split(' ') # 줄 끝의 줄 바꿈 문자를 제거한다.
+
+                        for h_file in h_files:
+                            if h_file == '\\': break
+                            if not h_file.endswith('.h'): continue
+
+                            h_abspath = os.path.abspath(os.path.realpath(h_file))
+
+                            if h_abspath.startswith(env.get_source_dir()):
+                                h_txt = h_abspath[len(env.get_source_dir()) + 1:]
+                                if h_txt not in h_list: h_list.append(h_txt)
+                                # print(h_txt)
+
+                            if h_abspath.startswith(env.get_build_dir()):
+                                h_txt = h_abspath[len(env.get_build_dir()) + 1:]
+                                if h_txt not in h_buld: h_buld.append(h_txt)
+                                # print("==>>" + h_txt)
 
             h_list.sort()
             h_buld.sort()
