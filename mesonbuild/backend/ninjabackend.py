@@ -1081,7 +1081,7 @@ class NinjaBackend(backends.Backend):
                     if not os.path.exists(destdir):
                         os.makedirs(destdir)
                     shutil.copy(s_abspath, destfile)
-            f.write('  <ItemGroup>')
+            f.write('  </ItemGroup>')
         os.chdir(cur_dir)
 
         elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
