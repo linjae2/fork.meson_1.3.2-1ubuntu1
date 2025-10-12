@@ -242,11 +242,12 @@ class MesonApp:
                 os.makedirs(directpath)
 
             with open(filename, 'w', encoding='utf-8') as f:
+                f.write('  <ItemGroup>\n')
                 for h_file in h_buld:
                     h_txt = os.path.relpath(os.path.join(env.get_build_dir(), h_file))
-                    f.write('<ClCompile Include="{}" />\n'.format(h_txt))
+                    f.write('    <ClCompile Include="{}" />\n'.format(".builds/include/" + h_txt))
                     if os.path.exists(h_txt):
-                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".h_build", h_file)
+                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".builds/include", h_file)
                         destdir = os.path.dirname(destfile)
                         if not os.path.exists(destdir):
                             os.makedirs(destdir)
@@ -254,13 +255,14 @@ class MesonApp:
 
                 for h_file in h_list:
                     h_txt = os.path.relpath(os.path.join(env.get_source_dir(), h_file))
-                    f.write('<ClCompile Include="{}" />\n'.format(h_txt))
+                    f.write('    <ClCompile Include="{}" />\n'.format(h_file))
                     if os.path.exists(h_txt):
-                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".h_src", h_file)
+                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".include", h_file)
                         destdir = os.path.dirname(destfile)
                         if not os.path.exists(destdir):
                             os.makedirs(destdir)
                         shutil.copy(h_txt, destfile)
+                f.write('  </ItemGroup>')
 
         # b = build.Build(env)
 

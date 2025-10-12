@@ -1062,20 +1062,27 @@ class NinjaBackend(backends.Backend):
         if not os.path.exists(directpath):
             os.makedirs(directpath)
 
+        cur_dir = os.getcwd()
+        os.chdir(self.environment.get_build_dir())
         tmp_sources = sorted(compiled_sources)
         with open(filename, 'w', encoding='utf-8') as f:
-            # f.write("\n".join(tmp_sources))
+            f.write('  <ItemGroup>\n')
             for s in tmp_sources:
-                f.write('<ClCompile Include="{}" />\n'.format(s))
-                file = target_sources.get(s)
-                if file is not None:
-                    srcpath = os.path.join(self.environment.get_source_dir(), file.subdir, file.fname)
-                    if os.path.exists(srcpath):
-                        destfile = os.path.abspath(os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"), file.subdir, file.fname))
-                        destdir = os.path.dirname(destfile)
-                        if not os.path.exists(destdir):
-                            os.makedirs(destdir)
-                        shutil.copy(srcpath, destfile)
+                s_abspath = os.path.abspath(os.path.realpath(s))
+                h_txt = s_abspath
+                if s_abspath.startswith(self.environment.get_source_dir()):
+                    h_txt = s_abspath[len(self.environment.get_source_dir()) + 1:]
+                if s_abspath.startswith(self.environment.get_build_dir()):
+                    h_txt = ".builds/" + s_abspath[len(self.environment.get_build_dir()) + 1:]
+                f.write('    <ClCompile Include="{}" />\n'.format(h_txt))
+                if os.path.exists(s_abspath):
+                    destfile = os.path.abspath(os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"), h_txt))
+                    destdir = os.path.dirname(destfile)
+                    if not os.path.exists(destdir):
+                        os.makedirs(destdir)
+                    shutil.copy(s_abspath, destfile)
+            f.write('  <ItemGroup>')
+        os.chdir(cur_dir)
 
         elem = self.generate_link(target, outname, final_obj_list, linker, pch_objects, stdlib_args=stdlib_args)
         self.generate_dependency_scan_target(target, compiled_sources, source2object, generated_source_files, fortran_order_deps)
