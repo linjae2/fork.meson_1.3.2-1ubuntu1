@@ -1063,6 +1063,12 @@ class NinjaBackend(backends.Backend):
         with open(dep_file, 'w', encoding='utf-8') as f:
             f.write("\n".join(obj_list))
 
+        dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", self.get_target_filename(target).replace("/", "_") + ".s")
+        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
+        with open(dep_file, 'w', encoding='utf-8') as f:
+            f.write("\n".join(compiled_sources))
+
         directpath = os.path.join(self.environment.get_build_dir(), ".src", outname.replace("/", "_"))
         filename = os.path.join(directpath, outname.replace("/", "_") + ".c.txt")
         if not os.path.exists(directpath):

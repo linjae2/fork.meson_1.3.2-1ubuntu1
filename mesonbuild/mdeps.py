@@ -180,33 +180,78 @@ class MesonApp:
         with mesonlib.BuildDirLock(self.build_dir):
             return self._generate(env, capture, vslite_ctx)
 
-    def _generate(self, env: environment.Environment, capture: bool, vslite_ctx: T.Optional[dict]) -> T.Optional[dict]:
-        # Get all user defined options, including options that have been defined
-        # during a previous invocation or using meson configure.
-        user_defined_options = argparse.Namespace(**vars(self.options))
-        coredata.read_cmd_line_file(self.build_dir, user_defined_options)
+    def gen_source(self, env: environment.Environment):
+        print("==== gen_source ====")
+        depdir = os.path.join(env.get_build_dir(), ".deps/d")
+        file_list = os.listdir(depdir)
+        file_list = [file for file in file_list if file.endswith(".s")]
 
-        mlog.debug('Build started at', datetime.datetime.now().isoformat())
-        mlog.debug('Main binary:', sys.executable)
-        mlog.debug('Build Options:', coredata.format_cmd_line_options(user_defined_options))
-        mlog.debug('Python system:', platform.system())
-        mlog.log(mlog.bold('The Meson build system'))
-        mlog.log('Version:', coredata.version)
-        mlog.log('Source dir:', mlog.bold(self.source_dir))
-        mlog.log('Build dir:', mlog.bold(self.build_dir))
-        if env.is_cross_build():
-            mlog.log('Build type:', mlog.bold('cross build'))
-        else:
-            mlog.log('Build type:', mlog.bold('native build'))
+        # print('\n'.join(file_list))
+        for file in file_list:
+            file_name, _ = os.path.splitext(file)
+            filedir = os.path.join(env.get_build_dir(), ".src", file_name)
 
+            s_list = []
+            s_buld = []
+            s_files = []
+            dfilename = os.path.join(depdir, file)
+            with open(dfilename, 'r', encoding='utf-8') as f:
+                while True:
+                    line = f.readline()
+                    if not line: break
 
+                    s_file = os.path.abspath(os.path.join(env.get_build_dir(), line.strip()))
+                    if os.path.exists(s_file): s_files.append(s_file)
+                    else : print("====> miss {}".format(s_file))
+
+                    if s_file.startswith(env.get_source_dir()):
+                        h_txt = s_file[len(env.get_source_dir()) + 1:]
+                        if h_txt not in s_list: s_list.append(h_txt)
+                        # print(h_txt)
+
+                    elif s_file.startswith(env.get_build_dir()):
+                        h_txt = s_file[len(env.get_build_dir()) + 1:]
+                        if h_txt not in s_buld: s_buld.append(h_txt)
+                        # print("==>>" + h_txt)
+                    
+                    else : print("=====> miss {}".format(s_file))
+
+            s_list.sort()
+            s_buld.sort()
+            filendir = os.path.join(env.get_build_dir(), ".src", file_name)
+            filename = os.path.join(filendir, file_name + ".s.txt")
+            if not os.path.exists(filendir):
+                os.makedirs(filendir)
+
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write('  <ItemGroup>\n')
+                for h_file in s_buld:
+                    h_txt = os.path.relpath(os.path.join(env.get_build_dir(), h_file))
+                    f.write('    <ClCompile Include="{}" />\n'.format(".builds/" + h_txt))
+                    if os.path.exists(h_txt):
+                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".builds", h_file)
+                        destdir = os.path.dirname(destfile)
+                        if not os.path.exists(destdir):
+                            os.makedirs(destdir)
+                        shutil.copy(h_txt, destfile)
+
+                for h_file in s_list:
+                    h_txt = os.path.relpath(os.path.join(env.get_source_dir(), h_file))
+                    f.write('    <ClCompile Include="{}" />\n'.format(h_file))
+                    if os.path.exists(h_txt):
+                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, h_file)
+                        destdir = os.path.dirname(destfile)
+                        if not os.path.exists(destdir):
+                            os.makedirs(destdir)
+                        shutil.copy(h_txt, destfile)
+                f.write('  </ItemGroup>')
+
+    def gen_headers(self, env: environment.Environment):
+        print("==== gen_headers ====")
         depdir = os.path.join(env.get_build_dir(), ".deps/d")
         file_list = os.listdir(depdir)
         file_list = [file for file in file_list if file.endswith(".d")]
-        # print ("file_list: {}".format(file_list))
 
-        cur_dir = os.getcwd()
-        os.chdir(env.get_build_dir())
         for file in file_list:
             file_name, _ = os.path.splitext(file)
             filedir = os.path.join(env.get_build_dir(), ".src", file_name)
@@ -276,112 +321,32 @@ class MesonApp:
                         shutil.copy(h_txt, destfile)
                 f.write('  </ItemGroup>')
 
-        # b = build.Build(env)
+    def _generate(self, env: environment.Environment, capture: bool, vslite_ctx: T.Optional[dict]) -> T.Optional[dict]:
+        # Get all user defined options, including options that have been defined
+        # during a previous invocation or using meson configure.
+        user_defined_options = argparse.Namespace(**vars(self.options))
+        coredata.read_cmd_line_file(self.build_dir, user_defined_options)
 
-        # intr = interpreter.Interpreter(b, user_defined_options=user_defined_options)
-        # # Super hack because mlog.log and mlog.debug have different signatures,
-        # # and there is currently no way to annotate them correctly, unionize them, or
-        # # even to write `T.Callable[[*mlog.TV_Loggable], None]`
-        # logger_fun = T.cast('T.Callable[[mlog.TV_Loggable, mlog.TV_Loggable], None]',
-        #                     (mlog.log if env.is_cross_build() else mlog.debug))
-        # build_machine = intr.builtin['build_machine']
-        # host_machine = intr.builtin['host_machine']
-        # target_machine = intr.builtin['target_machine']
-        # assert isinstance(build_machine, interpreter.MachineHolder)
-        # assert isinstance(host_machine, interpreter.MachineHolder)
-        # assert isinstance(target_machine, interpreter.MachineHolder)
-        # logger_fun('Build machine cpu family:', mlog.bold(build_machine.cpu_family_method([], {})))
-        # logger_fun('Build machine cpu:', mlog.bold(build_machine.cpu_method([], {})))
-        # mlog.log('Host machine cpu family:', mlog.bold(host_machine.cpu_family_method([], {})))
-        # mlog.log('Host machine cpu:', mlog.bold(host_machine.cpu_method([], {})))
-        # logger_fun('Target machine cpu family:', mlog.bold(target_machine.cpu_family_method([], {})))
-        # logger_fun('Target machine cpu:', mlog.bold(target_machine.cpu_method([], {})))
-        # try:
-        #     if self.options.profile:
-        #         fname = os.path.join(self.build_dir, 'meson-logs', 'profile-interpreter.log')
-        #         profile.runctx('intr.run()', globals(), locals(), filename=fname)
-        #     else:
-        #         intr.run()
-        # except Exception as e:
-        #     mintro.write_meson_info_file(b, [e])
-        #     raise
+        mlog.debug('Build started at', datetime.datetime.now().isoformat())
+        mlog.debug('Main binary:', sys.executable)
+        mlog.debug('Build Options:', coredata.format_cmd_line_options(user_defined_options))
+        mlog.debug('Python system:', platform.system())
+        mlog.log(mlog.bold('The Meson build system'))
+        mlog.log('Version:', coredata.version)
+        mlog.log('Source dir:', mlog.bold(self.source_dir))
+        mlog.log('Build dir:', mlog.bold(self.build_dir))
+        if env.is_cross_build():
+            mlog.log('Build type:', mlog.bold('cross build'))
+        else:
+            mlog.log('Build type:', mlog.bold('native build'))
 
-        # cdf: T.Optional[str] = None
-        # captured_compile_args: T.Optional[dict] = None
-        # try:
-        #     dumpfile = os.path.join(env.get_scratch_dir(), 'build.dat')
-        #     # We would like to write coredata as late as possible since we use the existence of
-        #     # this file to check if we generated the build file successfully. Since coredata
-        #     # includes settings, the build files must depend on it and appear newer. However, due
-        #     # to various kernel caches, we cannot guarantee that any time in Python is exactly in
-        #     # sync with the time that gets applied to any files. Thus, we dump this file as late as
-        #     # possible, but before build files, and if any error occurs, delete it.
-        #     cdf = env.dump_coredata()
+        cur_dir = os.getcwd()
+        os.chdir(env.get_build_dir())
 
-        #     self.finalize_postconf_hooks(b, intr)
-        #     if self.options.profile:
-        #         fname = f'profile-{intr.backend.name}-backend.log'
-        #         fname = os.path.join(self.build_dir, 'meson-logs', fname)
-        #         profile.runctx('gen_result = intr.backend.generate(capture, vslite_ctx)', globals(), locals(), filename=fname)
-        #         captured_compile_args = locals()['gen_result']
-        #         assert captured_compile_args is None or isinstance(captured_compile_args, dict)
-        #     else:
-        #         captured_compile_args = intr.backend.generate(capture, vslite_ctx)
+        self.gen_source(env)
+        self.gen_headers(env)
 
-        #     build.save(b, dumpfile)
-        #     if env.first_invocation:
-        #         # Use path resolved by coredata because they could have been
-        #         # read from a pipe and wrote into a private file.
-        #         self.options.cross_file = env.coredata.cross_files
-        #         self.options.native_file = env.coredata.config_files
-        #         coredata.write_cmd_line_file(self.build_dir, self.options)
-        #     else:
-        #         coredata.update_cmd_line_file(self.build_dir, self.options)
-
-        #     # Generate an IDE introspection file with the same syntax as the already existing API
-        #     if self.options.profile:
-        #         fname = os.path.join(self.build_dir, 'meson-logs', 'profile-introspector.log')
-        #         profile.runctx('mintro.generate_introspection_file(b, intr.backend)', globals(), locals(), filename=fname)
-        #     else:
-        #         mintro.generate_introspection_file(b, intr.backend)
-        #     mintro.write_meson_info_file(b, [], True)
-
-        #     # Post-conf scripts must be run after writing coredata or else introspection fails.
-        #     intr.backend.run_postconf_scripts()
-
-        #     # collect warnings about unsupported build configurations; must be done after full arg processing
-        #     # by Interpreter() init, but this is most visible at the end
-        #     if env.coredata.options[mesonlib.OptionKey('backend')].value == 'xcode':
-        #         mlog.warning('xcode backend is currently unmaintained, patches welcome')
-        #     if env.coredata.options[mesonlib.OptionKey('layout')].value == 'flat':
-        #         mlog.warning('-Dlayout=flat is unsupported and probably broken. It was a failed experiment at '
-        #                      'making Windows build artifacts runnable while uninstalled, due to PATH considerations, '
-        #                      'but was untested by CI and anyways breaks reasonable use of conflicting targets in different subdirs. '
-        #                      'Please consider using `meson devenv` instead. See https://github.com/mesonbuild/meson/pull/9243 '
-        #                      'for details.')
-
-        #     if self.options.profile:
-        #         fname = os.path.join(self.build_dir, 'meson-logs', 'profile-startup-modules.json')
-        #         mods = set(sys.modules.keys())
-        #         mesonmods = {mod for mod in mods if (mod+'.').startswith('mesonbuild.')}
-        #         stdmods = sorted(mods - mesonmods)
-        #         data = {'stdlib': {'modules': stdmods, 'count': len(stdmods)}, 'meson': {'modules': sorted(mesonmods), 'count': len(mesonmods)}}
-        #         with open(fname, 'w', encoding='utf-8') as f:
-        #             json.dump(data, f)
-
-        #         mlog.log("meson setup completed")  # Display timestamp
-
-        # except Exception as e:
-        #     mintro.write_meson_info_file(b, [e])
-        #     if cdf is not None:
-        #         old_cdf = cdf + '.prev'
-        #         if os.path.exists(old_cdf):
-        #             os.replace(old_cdf, cdf)
-        #         else:
-        #             os.unlink(cdf)
-        #     raise
-
-        # return captured_compile_args
+        os.chdir(cur_dir)
 
     def finalize_postconf_hooks(self, b: build.Build, intr: interpreter.Interpreter) -> None:
         b.devenv.append(intr.backend.get_devenv())
