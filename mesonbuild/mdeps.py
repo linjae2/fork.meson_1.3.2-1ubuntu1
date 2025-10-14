@@ -180,71 +180,140 @@ class MesonApp:
         with mesonlib.BuildDirLock(self.build_dir):
             return self._generate(env, capture, vslite_ctx)
 
-    def gen_source(self, env: environment.Environment):
-        print("==== gen_source ====")
-        depdir = os.path.join(env.get_build_dir(), ".deps/d")
-        file_list = os.listdir(depdir)
-        file_list = [file for file in file_list if file.endswith(".s")]
+    def gen_source(self, env: environment.Environment, target):
+        print("==> gen *{}* ====".format(target))
+        if "tools_virsh" == target:
+            pass
+        t_path = os.path.join(env.get_build_dir(), ".deps/d", target)
+        d_path = t_path + ".s"
+        if not os.path.exists(d_path): return
 
-        # print('\n'.join(file_list))
-        for file in file_list:
-            file_name, _ = os.path.splitext(file)
-            filedir = os.path.join(env.get_build_dir(), ".src", file_name)
+        s_list = []
+        s_buld = []
+        s_files = []
+        with open(d_path, 'r', encoding='utf-8') as f:
+            while True:
+                line = f.readline()
+                if not line: break
 
-            s_list = []
-            s_buld = []
-            s_files = []
-            dfilename = os.path.join(depdir, file)
-            with open(dfilename, 'r', encoding='utf-8') as f:
+                s_file = os.path.abspath(os.path.join(env.get_build_dir(), line.strip()))
+                if not os.path.exists(s_file):
+                    print("   ====> miss {}".format(s_file))
+
+                r_file = os.path.relpath(s_file, env.get_build_dir())
+                s_files.append(r_file)
+                if s_file.startswith(env.get_source_dir()):
+                    if r_file not in s_list: s_list.append(r_file)
+                elif s_file.startswith(env.get_build_dir()):
+                    if r_file not in s_buld: s_buld.append(r_file)
+                else : print("  ====> miss {}".format(r_file))
+
+        s_list.sort()
+        s_buld.sort()
+        filendir = os.path.join(env.get_build_dir(), ".src", target)
+        filename = os.path.join(filendir, target + ".s.txt")
+        if not os.path.exists(filendir): os.makedirs(filendir)
+
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write('  <ItemGroup>\n')
+
+            for _file in s_buld:
+                h_txt = os.path.abspath(_file)[len(env.get_build_dir()) + 1:]
+                f.write('    <ClCompile Include="{}" />\n'.format(".builds/" + h_txt))
+                if os.path.exists(_file):
+                    destfile = os.path.join(filendir, ".builds", h_txt)
+                    destdir = os.path.dirname(destfile)
+                    if not os.path.exists(destdir): os.makedirs(destdir)
+                    shutil.copy(_file, destfile)
+
+            for _file in s_list:
+                h_txt = os.path.abspath(_file)[len(env.get_source_dir()) + 1:]
+                f.write('    <ClCompile Include="{}" />\n'.format(h_txt))
+                if os.path.exists(_file):
+                    destfile = os.path.join(filendir, h_txt)
+                    destdir = os.path.dirname(destfile)
+                    if not os.path.exists(destdir): os.makedirs(destdir)
+                    shutil.copy(_file, destfile)
+
+            f.write('  </ItemGroup>')
+        
+        # 헤더파일
+        d_path = t_path + ".d"
+        if not os.path.exists(d_path): return
+
+        h_list = []
+        h_buld = []
+        d_files = []
+        o_list = []
+        with open(d_path, 'r', encoding='utf-8') as f:
+            while True:
+                line = f.readline()
+                if not line: break
+                else: line = line.strip()
+
+                _file = os.path.abspath(os.path.join(env.get_build_dir(), line + ".d"))
+                if os.path.exists(_file): d_files.append(_file)
+                else:
+                    if not line in o_list: o_list.append(line)
+                    print("  ====> d file miss {}".format(_file))
+
+        for _file in d_files:
+            with open(_file, 'r', encoding='utf-8') as f:
                 while True:
                     line = f.readline()
                     if not line: break
 
-                    s_file = os.path.abspath(os.path.join(env.get_build_dir(), line.strip()))
-                    if os.path.exists(s_file): s_files.append(s_file)
-                    else : print("====> miss {}".format(s_file))
+                    _files = line.strip().split(' ') # 줄 끝의 줄 바꿈 문자를 제거한다.
+                    for r_file in _files:
+                        if r_file == '\\': break
+                        if r_file in s_files: continue
+                        if r_file.endswith('.o:'): continue
 
-                    if s_file.startswith(env.get_source_dir()):
-                        h_txt = s_file[len(env.get_source_dir()) + 1:]
-                        if h_txt not in s_list: s_list.append(h_txt)
-                        # print(h_txt)
+                        # if not (h_file.endswith('.h') or h_file.endswith('.c')): continue
+                        # r_file = os.path.relpath(s_file, env.get_build_dir())
 
-                    elif s_file.startswith(env.get_build_dir()):
-                        h_txt = s_file[len(env.get_build_dir()) + 1:]
-                        if h_txt not in s_buld: s_buld.append(h_txt)
-                        # print("==>>" + h_txt)
-                    
-                    else : print("=====> miss {}".format(s_file))
+                        d_file = os.path.abspath(r_file)
+                        if d_file.startswith(env.get_source_dir()):
+                            if r_file not in h_list: h_list.append(r_file)
+                        elif d_file.startswith(env.get_build_dir()):
+                            if r_file not in h_buld: h_buld.append(r_file)
+                        elif d_file.startswith('/usr/include/'): pass
+                        elif d_file.startswith('/usr/lib/'): pass
+                        else : print("  ====> h miss {}".format(r_file))
 
-            s_list.sort()
-            s_buld.sort()
-            filendir = os.path.join(env.get_build_dir(), ".src", file_name)
-            filename = os.path.join(filendir, file_name + ".s.txt")
-            if not os.path.exists(filendir):
-                os.makedirs(filendir)
+        h_list.sort()
+        h_buld.sort()
+        filendir = os.path.join(env.get_build_dir(), ".src", target)
+        filename = os.path.join(filendir, target + ".h.txt")
+        if not os.path.exists(filendir): os.makedirs(filendir)
 
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write('  <ItemGroup>\n')
-                for h_file in s_buld:
-                    h_txt = os.path.relpath(os.path.join(env.get_build_dir(), h_file))
-                    f.write('    <ClCompile Include="{}" />\n'.format(".builds/" + h_txt))
-                    if os.path.exists(h_txt):
-                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, ".builds", h_file)
-                        destdir = os.path.dirname(destfile)
-                        if not os.path.exists(destdir):
-                            os.makedirs(destdir)
-                        shutil.copy(h_txt, destfile)
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write('  <ItemGroup>\n')
 
-                for h_file in s_list:
-                    h_txt = os.path.relpath(os.path.join(env.get_source_dir(), h_file))
-                    f.write('    <ClCompile Include="{}" />\n'.format(h_file))
-                    if os.path.exists(h_txt):
-                        destfile = os.path.join(env.get_build_dir(), ".src", file_name, h_file)
-                        destdir = os.path.dirname(destfile)
-                        if not os.path.exists(destdir):
-                            os.makedirs(destdir)
-                        shutil.copy(h_txt, destfile)
-                f.write('  </ItemGroup>')
+            for _file in h_buld:
+                h_txt = os.path.abspath(_file)[len(env.get_build_dir()) + 1:]
+                if h_txt.endswith(".o"): f.write('    <Object Include="{}" />\n'.format(".builds/.ins/" + h_txt))
+                else: f.write('    <ClInclude Include="{}" />\n'.format(".builds/.ins/" + h_txt))
+                if os.path.exists(_file):
+                    destfile = os.path.join(filendir, ".builds/.ins", h_txt)
+                    destdir = os.path.dirname(destfile)
+                    if not os.path.exists(destdir): os.makedirs(destdir)
+                    shutil.copy(_file, destfile)
+
+            for _file in h_list:
+                h_txt = os.path.abspath(_file)[len(env.get_source_dir()) + 1:]
+                if h_txt.endswith(".o"): f.write('    <Object Include="{}" />\n'.format(h_txt))
+                else: f.write('    <ClInclude Include="{}" />\n'.format(h_txt))
+                if os.path.exists(_file):
+                    destfile = os.path.join(filendir, h_txt)
+                    destdir = os.path.dirname(destfile)
+                    if not os.path.exists(destdir): os.makedirs(destdir)
+                    shutil.copy(_file, destfile)
+            f.write('  </ItemGroup>')
+        
+        t_path = os.path.join(env.get_build_dir(), ".deps/d", target)
+        t_path = os.path.join(env.get_build_dir(), ".deps", "targets", target)
+        shutil.copy(t_path, os.path.join(filendir, target + ".t.txt"))
 
     def gen_headers(self, env: environment.Environment):
         print("==== gen_headers ====")
@@ -277,7 +346,7 @@ class MesonApp:
 
                         for h_file in h_files:
                             if h_file == '\\': break
-                            if not h_file.endswith('.h'): continue
+                            if not (h_file.endswith('.h') or h_file.endswith('.c')): continue
 
                             h_abspath = os.path.abspath(os.path.realpath(h_file))
 
@@ -343,8 +412,14 @@ class MesonApp:
         cur_dir = os.getcwd()
         os.chdir(env.get_build_dir())
 
-        self.gen_source(env)
-        self.gen_headers(env)
+        dep_path = os.path.join(env.get_build_dir(), ".deps", "targets")
+        file_list = os.listdir(dep_path)
+
+        # print('\n'.join(file_list))
+        for file in file_list:
+            self.gen_source(env, file)
+        
+        # self.gen_headers(env)
 
         os.chdir(cur_dir)
 
