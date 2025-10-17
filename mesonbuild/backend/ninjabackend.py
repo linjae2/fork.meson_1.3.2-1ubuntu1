@@ -45,6 +45,8 @@ from ..mesonlib import get_compiler_for_source, has_path_sep, OptionKey
 from .backends import CleanTrees
 from ..build import GeneratedList, InvalidArguments
 
+from ..gcctarget import GCTargetInfo
+
 if T.TYPE_CHECKING:
     from typing_extensions import Literal
 
@@ -1071,79 +1073,91 @@ class NinjaBackend(backends.Backend):
         self.add_build(elem)
 
         # =====================================================================
+        gti = GCTargetInfo(target, self.get_target_filename(target).replace("/", "_"))
+        gti.target_sources = target_sources
+        gti.generated_sources = generated_sources
+        gti.transpiled_sources = transpiled_sources
+        gti.compiled_sources = compiled_sources
+        gti.final_obj_list = final_obj_list
+        gti.generated_object_files = generated_object_files
+        gti.source2command = source2command
+        gti.linkcommand = c
+        gti.save(self.environment)
         import shutil
         t_filename = self.get_target_filename(target).replace("/", "_")
-        if t_filename == "qemumonitorjsontest":
-            pass
-        dep_path = os.path.join(self.environment.get_build_dir(), ".deps", "targets")
-        if not os.path.exists(dep_path): os.makedirs(dep_path)
-        with open(os.path.join(dep_path, t_filename), 'w') as f:
-            # tmps = [*(d.get_all_link_args() for d in target.get_external_deps())]
-            # f.write("DEPS:\n{}\n\n".format(tmps.update(target.get_dependencies())))
-            args = list(c)[1:]
-            f.write("LINK:\n  {}\n\n".format(sorted(args)))
-            f.write("COMPILE:\n")
-            for s, c in source2command.items():
-                args = list(c)[1:]
-                f.write(f" {s:<80}: {sorted(args)}\n")
+        # if t_filename == "src_conf_libvirt_conf.a":
+        #     pass
+        # dep_path = os.path.join(self.environment.get_build_dir(), ".deps", "targets")
+        # if not os.path.exists(dep_path): os.makedirs(dep_path)
+        # with open(os.path.join(dep_path, t_filename), 'w') as f:
+        #     # tmps = [*(d.get_all_link_args() for d in target.get_external_deps())]
+        #     # f.write("DEPS:\n{}\n\n".format(tmps.update(target.get_dependencies())))
+        #     args = sorted(list(set(list(c)[1:])))
+        #     f.write("LINK:\n  {}\n".format(args))
+        #     f.write("     \n".join(args))
+        #     f.write("\n\n\n\nCOMPILE:\n")
+        #     for s, c in source2command.items():
+        #         args = list(set(list(c)[1:]))
+        #         a, b = self.get_deps(args)
+        #         f.write(f" {s:<80}: {sorted(args)}\n")
+        #         f.write("                    {}\n                    {}\n".format(";".join(a), ";".join(b)))
 
-            f.write("\ntarget_sources:\n  {}\n".format(sorted(target_sources)))
-            f.write("\ngenerated_sources:\n  {}\n".format(sorted(generated_sources)))
-            f.write("\ntranspiled_sources:\n  {}\n".format(sorted(transpiled_sources)))
-            f.write("\ncompiled_sources:\n  {}\n".format(sorted(compiled_sources)))
-            f.write("\nfinal_obj_list:\n  {}\n".format(sorted(final_obj_list)))
-            f.write("\ngenerated_object_files:\n  {}\n".format(sorted(generated_object_files)))
-            
+        #     f.write("\ntarget_sources:\n  {}\n".format(sorted(target_sources)))
+        #     f.write("\ngenerated_sources:\n  {}\n".format(sorted(generated_sources)))
+        #     f.write("\ntranspiled_sources:\n  {}\n".format(sorted(transpiled_sources)))
+        #     f.write("\ncompiled_sources:\n  {}\n".format(sorted(compiled_sources)))
+        #     f.write("\nfinal_obj_list:\n  {}\n".format(sorted(final_obj_list)))
+        #     f.write("\ngenerated_object_files:\n  {}\n".format(sorted(generated_object_files)))
 
-        dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", t_filename + ".d")
-        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
-            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
-        with open(dep_file, 'w', encoding='utf-8') as f:
-            f.write("\n".join([t for t in obj_list if t not in generated_object_files]))
+        # dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", t_filename + ".d")
+        # if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+        #     os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
+        # with open(dep_file, 'w', encoding='utf-8') as f:
+        #     f.write("\n".join([t for t in obj_list if t not in generated_object_files]))
 
-        dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", t_filename + ".s")
-        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
-            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
-        with open(dep_file, 'w', encoding='utf-8') as f:
-            f.write("\n".join(compiled_sources))
-            if len(generated_object_files) > 0:
-                if len(compiled_sources) > 0: f.write("\n")
-                f.write("\n".join(generated_object_files))
+        # dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", t_filename + ".s")
+        # if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+        #     os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
+        # with open(dep_file, 'w', encoding='utf-8') as f:
+        #     f.write("\n".join(compiled_sources))
+        #     if len(generated_object_files) > 0:
+        #         if len(compiled_sources) > 0: f.write("\n")
+        #         f.write("\n".join(generated_object_files))
 
-        dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", t_filename + ".o")
-        if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
-            os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
-        if len(generated_object_files) > 0:
-            with open(dep_file, 'w', encoding='utf-8') as f:
-                f.write("\n".join(generated_object_files))
+        # dep_file = os.path.join(self.environment.get_build_dir(), ".deps/d", t_filename + ".o")
+        # if not os.path.exists(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file))):
+        #     os.makedirs(os.path.join(self.environment.get_build_dir(), os.path.dirname(dep_file)))
+        # if len(generated_object_files) > 0:
+        #     with open(dep_file, 'w', encoding='utf-8') as f:
+        #         f.write("\n".join(generated_object_files))
 
-        directpath = os.path.join(self.environment.get_build_dir(), ".src", t_filename)
-        filename = os.path.join(directpath, t_filename + ".c.txt")
-        if not os.path.exists(directpath):
-            os.makedirs(directpath)
+        # directpath = os.path.join(self.environment.get_build_dir(), ".src", t_filename)
+        # filename = os.path.join(directpath, t_filename + ".c.txt")
+        # if not os.path.exists(directpath):
+        #     os.makedirs(directpath)
 
-        cur_dir = os.getcwd()
-        os.chdir(self.environment.get_build_dir())
-        tmp_sources = sorted(compiled_sources)
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write('  <ItemGroup>\n')
-            for s in tmp_sources:
-                if source2command.get(s, None) is None: print("  {} ==> miss {}".format(t_filename, s))
-                s_abspath = os.path.abspath(os.path.realpath(s))
-                h_txt = s_abspath
-                if s_abspath.startswith(self.environment.get_source_dir()):
-                    h_txt = s_abspath[len(self.environment.get_source_dir()) + 1:]
-                if s_abspath.startswith(self.environment.get_build_dir()):
-                    h_txt = ".builds/" + s_abspath[len(self.environment.get_build_dir()) + 1:]
-                f.write('    <ClCompile Include="{}" />\n'.format(h_txt))
-                if os.path.exists(s_abspath):
-                    destfile = os.path.abspath(os.path.join(self.environment.get_build_dir(), ".src", t_filename, h_txt))
-                    destdir = os.path.dirname(destfile)
-                    if not os.path.exists(destdir):
-                        os.makedirs(destdir)
-                    shutil.copy(s_abspath, destfile)
-            f.write('  </ItemGroup>')
-        os.chdir(cur_dir)
+        # cur_dir = os.getcwd()
+        # os.chdir(self.environment.get_build_dir())
+        # tmp_sources = sorted(compiled_sources)
+        # with open(filename, 'w', encoding='utf-8') as f:
+        #     f.write('  <ItemGroup>\n')
+        #     for s in tmp_sources:
+        #         if source2command.get(s, None) is None: print("  {} ==> miss {}".format(t_filename, s))
+        #         s_abspath = os.path.abspath(os.path.realpath(s))
+        #         h_txt = s_abspath
+        #         if s_abspath.startswith(self.environment.get_source_dir()):
+        #             h_txt = s_abspath[len(self.environment.get_source_dir()) + 1:]
+        #         if s_abspath.startswith(self.environment.get_build_dir()):
+        #             h_txt = ".builds/" + s_abspath[len(self.environment.get_build_dir()) + 1:]
+        #         f.write('    <ClCompile Include="{}" />\n'.format(h_txt))
+        #         if os.path.exists(s_abspath):
+        #             destfile = os.path.abspath(os.path.join(self.environment.get_build_dir(), ".src", t_filename, h_txt))
+        #             destdir = os.path.dirname(destfile)
+        #             if not os.path.exists(destdir):
+        #                 os.makedirs(destdir)
+        #             shutil.copy(s_abspath, destfile)
+        #     f.write('  </ItemGroup>')
+        # os.chdir(cur_dir)
         # =====================================================================
 
         #In AIX, we archive shared libraries. If the instance is a shared library, we add a command to archive the shared library
@@ -1152,6 +1166,27 @@ class NinjaBackend(backends.Backend):
             if target.aix_so_archive:
                 elem = NinjaBuildElement(self.all_outputs, linker.get_archive_name(outname), 'AIX_LINKER', [outname])
                 self.add_build(elem)
+
+    def get_deps(self, args: T.List[str]):
+        ri = []
+        rd = []
+        for t in args:
+            if t.startswith("-I"):
+                incpath = os.path.abspath(t[2:])
+                # ri.append(t[3:])
+                if (incpath + "//").startswith(self.environment.get_build_dir()):
+                    incpath = "./builds/.inc/" + incpath[len(self.environment.get_build_dir()) + 1:]
+                    # if r_file not in s_list: s_list.append(r_file)
+                elif (incpath + "//").startswith(self.environment.get_source_dir()):
+                    incpath = "./" + incpath[len(self.environment.get_source_dir()) + 1:]
+                    # if r_file not in s_buld: s_buld.append(r_file)
+                # else : ri.append(inc)
+                if incpath.endswith("/"): 
+                    incpath = incpath[0: len(incpath) - 1]
+                ri.append(incpath)
+
+            if t.startswith("-D"): rd.append(t[2:])
+        return (sorted(ri), sorted(rd))
 
     def should_use_dyndeps_for_target(self, target: 'build.BuildTarget') -> bool:
         if mesonlib.version_compare(self.ninja_version, '<1.10.0'):
