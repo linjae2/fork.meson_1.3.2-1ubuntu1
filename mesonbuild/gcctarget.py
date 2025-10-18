@@ -79,10 +79,10 @@ vcxproj_02: str = """
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
+    <UseDebugLibraries>true</UseDebugLibraries>{ct}
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <UseDebugLibraries>false</UseDebugLibraries>
+    <UseDebugLibraries>false</UseDebugLibraries>{ct}
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -142,9 +142,18 @@ class GCTargetInfo:
 
     def generate_project(self, env: environment):
         t_name = self.targetname[0: len(self.targetname) - 2] if self.targetname.endswith(".a") else self.targetname
+        # if t_name == "src_libvirt.so.0.10000.0":
+        #     pass
         t_vcxpach = os.path.join(env.get_build_dir(), ".src", self.targetname)
         t_vcxproj = os.path.join(t_vcxpach, t_name + ".vcxproj")
         if not os.path.exists(t_vcxpach): os.makedirs(t_vcxpach)
+
+        # link = self.linkcommand.compiler
+        ConfigurationType: str = ""
+        if isinstance(self.target, build.StaticLibrary):
+            ConfigurationType = "\n    <ConfigurationType>StaticLibrary</ConfigurationType>"
+        elif isinstance(self.target, build.SharedLibrary):
+            ConfigurationType = "\n    <ConfigurationType>DynamicLibrary</ConfigurationType>"
 
         deplibs: T.List
         incslist: T.List
@@ -200,7 +209,7 @@ class GCTargetInfo:
         # 프로젝터 생성
         with open(t_vcxproj, 'w', encoding='utf-8') as f:
             f.write(vcxproj_01)
-            f.write(vcxproj_02.format(puid="{" + str(uuid.uuid4()) + "}", pname=t_name) + "\n")
+            f.write(vcxproj_02.format(puid="{" + str(uuid.uuid4()) + "}", pname=t_name, ct=ConfigurationType) + "\n")
 
             # 헤더 정보 포함
             f.write('  <ItemGroup>\n')
@@ -251,13 +260,14 @@ class GCTargetInfo:
                 f.write("      <AdditionalIncludeDirectories>{};%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>\n".format(";".join(incslist)))
             if len(defslist) > 0:
                 f.write("      <PreprocessorDefinitions>{};%(PreprocessorDefinitions)</PreprocessorDefinitions>\n".format(";".join(defslist)))
-
+            f.write("      <CLanguageStandard>gnu99</CLanguageStandard>\n")
+            f.write("      <PositionIndependentCode>true</PositionIndependentCode>\n")
+            f.write("    </ClCompile>\n")
             if len(deplibs) > 0:
               f.write('    <Link>\n')
               f.write("      <AdditionalDependencies>{};%(AdditionalDependencies)</AdditionalDependencies>\n".format(";".join(deplibs)))
               f.write('    </Link>\n')
-            f.write("    </ClCompile>\n")
-
+            f.write("  </ItemDefinitionGroup>\n")
             f.write(vcxproj_99)
         
         # 필터 생성
@@ -339,7 +349,7 @@ class GCTargetInfo:
                 if arg.startswith("-I"):
                     incpath = os.path.abspath(incpath)
                     if (incpath).startswith(env.get_build_dir()):
-                        incpath = "./builds/.inc/" + incpath[len(env.get_build_dir()) + 1:]
+                        incpath = "./.builds/.ins/" + incpath[len(env.get_build_dir()) + 1:]
                         # if r_file not in s_list: s_list.append(r_file)
                     elif (incpath).startswith(env.get_source_dir()):
                         incpath = "./" + incpath[len(env.get_source_dir()) + 1:]

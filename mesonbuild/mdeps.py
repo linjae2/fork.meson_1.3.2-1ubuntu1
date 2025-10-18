@@ -439,7 +439,7 @@ class MesonApp:
         # print('\n'.join(file_list))
         for file in file_list:
             gti:GCTargetInfo = GCTargetInfo.loadfrom(env, file)
-            if gti.targetname.startswith("test"): continue
+            # if gti.targetname.startswith("test"): continue
             gti.generate_project(env)
             # GCTargetInfo.loadfrom(env, file)
             # self.gen_source(env, file)
